@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/mic3ael/product-api/handlers"
 	"golang.org/x/net/context"
 )
@@ -18,8 +19,17 @@ func main() {
 	logger := log.New(os.Stdout, "product-api", log.LstdFlags)
 	ph := handlers.NewProducts(logger)
 
-	sm := http.NewServeMux()
-	sm.Handle("/", ph)
+	sm := mux.NewRouter()
+	getRouter := sm.Methods(http.MethodGet).Subrouter()
+	getRouter.HandleFunc("/", ph.GetProducts)
+
+	putRouter := sm.Methods(http.MethodPut).Subrouter()
+	putRouter.HandleFunc("/{id:[0-9]+}", ph.UpdateProducts)
+	putRouter.Use(ph.MiddlewareValidateProduct)
+
+	postRouter := sm.Methods(http.MethodPost).Subrouter()
+	postRouter.HandleFunc("/", ph.AddProducts)
+	postRouter.Use(ph.MiddlewareValidateProduct)
 
 	s := &http.Server{
 		Addr:         ":9090",
